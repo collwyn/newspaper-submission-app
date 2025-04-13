@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    }
+  ],
+  "env": {
+    "MONGODB_URI": "MONGODB_URI_HERE",
+    "JWT_SECRET": "JWT_SECRET_HERE",
+    "NODE_ENV": "production",
+    "MAX_FILE_SIZE": "10485760",
+    "UPLOAD_DIR": "uploads"
+  }
+}

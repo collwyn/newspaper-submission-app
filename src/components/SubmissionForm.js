@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { submissionService } from '../services/api';
+import Toast from './common/Toast';
 
 function SubmissionForm() {
   const navigate = useNavigate();
+  const [toast, setToast] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -15,7 +17,7 @@ function SubmissionForm() {
   const [files, setFiles] = useState([]);
   const [touchedFields, setTouchedFields] = useState({});
 
-  const { getRootProps, getInputProps, acceptedFiles } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     accept: {
       'application/pdf': ['.pdf'],
       'image/*': ['.jpeg', '.jpg', '.png']
@@ -30,6 +32,10 @@ function SubmissionForm() {
     onDropRejected: (fileRejections) => {
       const error = fileRejections[0]?.errors[0]?.message || 'File upload failed';
       setError(`Upload error: ${error}`);
+      setToast({
+        message: `Upload failed: ${error}`,
+        type: 'error'
+      });
     }
   });
 
@@ -78,28 +84,25 @@ function SubmissionForm() {
       }
 
       // Submit to API using the submission service
-      const response = await submissionService.createSubmission(formData, files);
+      await submissionService.createSubmission(formData, files);
       
-      // Clear form on success
+      // Show success message and clear form
+      setToast({ message: 'Submission successful!', type: 'success' });
       setFormData({ title: '', author: '', description: '' });
       setFiles([]);
       
-      // Show success message
-      const message = document.createElement('div');
-      message.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg';
-      message.textContent = 'Submission successful!';
-      document.body.appendChild(message);
-      
-      // Remove message after 3 seconds
+      // Navigate to submissions page after a short delay
       setTimeout(() => {
-        document.body.removeChild(message);
-      }, 3000);
-
-      // Navigate to submissions page
-      navigate('/submissions');
+        navigate('/submissions');
+      }, 1500);
       
     } catch (err) {
-      setError(err.message || 'Failed to submit the form. Please try again.');
+      const errorMessage = err.message || 'Failed to submit the form. Please try again.';
+      setError(errorMessage);
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
       console.error('Submission error:', err);
     } finally {
       setIsSubmitting(false);
@@ -113,7 +116,14 @@ function SubmissionForm() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <form onSubmit={handleSubmit} aria-busy={isSubmitting}>
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
             {error}
@@ -193,11 +203,26 @@ function SubmissionForm() {
           <div 
             {...getRootProps()} 
             className={`border-2 border-dashed p-6 text-center cursor-pointer transition-colors
-              ${files.length ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-blue-400'}`}
+              ${files.length ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-blue-400'}
+              ${error ? 'border-red-300 bg-red-50' : ''}`}
           >
             <input {...getInputProps()} />
             <p>Drag and drop your files here, or click to select files</p>
             <p className="text-sm text-gray-500 mt-1">Supported formats: PDF, JPEG, PNG (max 10MB)</p>
+            {files.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-gray-700">Selected files:</p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {files.map((file, index) => (
+                    <li key={index} className="flex items-center justify-center space-x-2">
+                      <span>{file.name}</span>
+                      <span className="text-gray-400">•</span>
+                      <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
           
           {files.length > 0 && (

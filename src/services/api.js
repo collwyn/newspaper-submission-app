@@ -27,29 +27,25 @@ export const submissionService = {
   // Create a new submission
   createSubmission: async (formData, files) => {
     try {
-      // First, upload files if any
-      const uploadedFiles = await Promise.all(
-        files.map(async (file) => {
-          const formData = new FormData();
-          formData.append('file', file);
-          
-          const response = await api.post('/uploads', formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-          
-          return response.data.fileUrl;
-        })
-      );
+      // Create FormData with all submission data
+      const submissionFormData = new FormData();
+      
+      // Add form fields
+      Object.keys(formData).forEach(key => {
+        submissionFormData.append(key, formData[key]);
+      });
+      
+      // Add file
+      if (files.length > 0) {
+        submissionFormData.append('file', files[0]); // Currently handling single file
+      }
 
-      // Then create the submission with form data and file URLs
-      const submission = {
-        ...formData,
-        files: uploadedFiles
-      };
-
-      const response = await api.post('/submissions', submission);
+      // Submit form data and file together
+      const response = await api.post('/articles', submissionFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Submission creation failed:', error);

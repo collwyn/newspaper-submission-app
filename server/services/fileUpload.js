@@ -1,23 +1,6 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    // Ensure upload directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-randomstring-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
-  }
-});
+const { put, del } = require('@vercel/blob');
+const memory = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -31,35 +14,44 @@ const fileFilter = (req, file, cb) => {
 
 // Create multer instance with configuration
 const upload = multer({
-  storage: storage,
+  storage: memory,
   fileFilter: fileFilter,
   limits: {
     fileSize: process.env.MAX_FILE_SIZE || 10 * 1024 * 1024 // Default 10MB
   }
 });
 
-// Helper function to delete file
-const deleteFile = async (filePath) => {
+// Helper function to upload file to Vercel Blob Storage
+const uploadToBlob = async (file) => {
   try {
-    if (fs.existsSync(filePath)) {
-      await fs.promises.unlink(filePath);
-      return true;
-    }
-    return false;
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `${uniqueSuffix}-${file.originalname}`;
+    
+    const blob = await put(filename, file.buffer, {
+      access: 'public',
+      contentType: file.mimetype
+    });
+    
+    return blob.url;
   } catch (error) {
-    console.error('Error deleting file:', error);
-    return false;
+    console.error('Error uploading to Blob Storage:', error);
+    throw error;
   }
 };
 
-// Helper function to get file URL
-const getFileUrl = (req, filename) => {
-  const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-  return `${baseUrl}/uploads/${filename}`;
+// Helper function to delete file from Vercel Blob Storage
+const deleteFile = async (url) => {
+  try {
+    await del(url);
+    return true;
+  } catch (error) {
+    console.error('Error deleting from Blob Storage:', error);
+    return false;
+  }
 };
 
 module.exports = {
   upload,
   deleteFile,
-  getFileUrl
+  uploadToBlob
 };

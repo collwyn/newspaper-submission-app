@@ -80,7 +80,7 @@ exports.getArticle = async (req, res) => {
   }
 };
 
-const { getFileUrl, deleteFile } = require('../services/fileUpload');
+const { uploadToBlob, deleteFile } = require('../services/fileUpload');
 
 // Create new article
 exports.createArticle = async (req, res) => {
@@ -98,11 +98,13 @@ exports.createArticle = async (req, res) => {
       });
     }
 
+    // Upload file to Vercel Blob Storage
+    const fileUrl = await uploadToBlob(req.file);
     // Create article with file information
     const articleData = {
       ...req.body,
       submittedBy: req.user._id,
-      fileUrl: getFileUrl(req, req.file.filename),
+      fileUrl: fileUrl, // Using the URL returned from Blob storage
       fileType: req.file.mimetype.split('/')[1]
     };
 
@@ -175,13 +177,8 @@ exports.deleteArticle = async (req, res) => {
       });
     }
 
-    // Extract filename from fileUrl
-    const filename = article.fileUrl.split('/').pop();
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const filePath = path.join(__dirname, '..', uploadDir, filename);
-
-    // Delete the file
-    await deleteFile(filePath);
+    // Delete the file from Blob storage
+    await deleteFile(article.fileUrl);
 
     // Remove the article from database
     await article.deleteOne();

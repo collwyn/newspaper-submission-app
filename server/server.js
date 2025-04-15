@@ -18,7 +18,11 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
+// Middleware
+app.use(cors({
+  origin: ['https://newspaper-submission-app.vercel.app', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(morgan('dev')); // logging
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

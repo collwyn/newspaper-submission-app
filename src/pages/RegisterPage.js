@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -74,13 +74,13 @@ function RegisterPage() {
 
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="name" className="sr-only">Full name</label>
+              <label htmlFor="username" className="sr-only">Full name</label>
               <input
-                id="name"
-                name="name"
+                id="username"
+                name="username"
                 type="text"
                 required
-                value={formData.name}
+                value={formData.username}
                 onChange={handleChange}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Full name"

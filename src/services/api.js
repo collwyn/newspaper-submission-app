@@ -56,7 +56,7 @@ export const submissionService = {
   // Get all submissions for the current user
   getUserSubmissions: async () => {
     try {
-      const response = await api.get('/submissions');
+      const response = await api.get('/articles');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch user submissions:', error);
@@ -67,7 +67,7 @@ export const submissionService = {
   // Get a specific submission by ID
   getSubmission: async (submissionId) => {
     try {
-      const response = await api.get(`/submissions/${submissionId}`);
+      const response = await api.get(`/articles/${submissionId}`);
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch submission ${submissionId}:`, error);

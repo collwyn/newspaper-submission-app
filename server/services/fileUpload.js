@@ -1,6 +1,23 @@
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { put, del } = require('@vercel/blob');
-const memory = multer.memoryStorage();
+
+// Ensure upload directory exists
+const ensureUploadDirectoryExists = () => {
+  const uploadDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.error('Error creating upload directory:', err);
+    }
+  }
+  return uploadDir;
+};
+
+// Memory storage for multer
+const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -14,93 +31,72 @@ const fileFilter = (req, file, cb) => {
 
 // Create multer instance with configuration
 const upload = multer({
-  storage: memory,
+  storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: process.env.MAX_FILE_SIZE || 10 * 1024 * 1024 // Default 10MB
+    fileSize: process.env.MAX_FILE_SIZE ? parseInt(process.env.MAX_FILE_SIZE) : 10 * 1024 * 1024 // Default 10MB
   }
 });
 
-// Helper function to upload file to local storage (temporary solution)
+// Helper function to upload file to Vercel Blob Storage
 const uploadToBlob = async (file) => {
   try {
+    // Ensure upload directory exists for local fallback
+    ensureUploadDirectoryExists();
+
     // Create a unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const filename = `${uniqueSuffix}-${file.originalname}`;
     
-    // Save to local directory
-    const fs = require('fs');
-    const path = require('path');
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const uploadPath = path.join(__dirname, '..', uploadDir);
+    // Upload to Vercel Blob Storage
+    const blob = await put(filename, file.buffer, {
+      access: 'public',
+      contentType: file.mimetype
+    });
     
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    
-    // Write file
-    const filePath = path.join(uploadPath, filename);
-    fs.writeFileSync(filePath, file.buffer);
-    
-    // Return path that can be accessed via URL
-    return `/uploads/${filename}`;
+    return blob.url;
   } catch (error) {
-    console.error('Error uploading to local storage:', error);
-    throw error;
+    console.error('Error uploading to Blob Storage:', error);
+    
+    // Fallback to local storage if Blob upload fails
+    try {
+      const uploadDir = ensureUploadDirectoryExists();
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, file.buffer);
+      return `/uploads/${filename}`;
+    } catch (localError) {
+      console.error('Error uploading to local storage:', localError);
+      throw error;
+    }
   }
 };
 
-// Helper function to upload file to Vercel Blob Storage
-//const uploadToBlob = async (file) => {
- // try {
-//    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
- //   const filename = `${uniqueSuffix}-${file.originalname}`;
-    
- //   const blob = await put(filename, file.buffer, {
- //     access: 'public',
- //     contentType: file.mimetype
-//    });
-    
-//    return blob.url;
-//  } catch (error) {
- //   console.error('Error uploading to Blob Storage:', error);
- //   throw error;
-//  }
-//};
-
-// Helper function to delete file from Vercel Blob Storage
-//const deleteFile = async (url) => {
-//  try {
-//    await del(url);
-//    return true;
-//  } catch (error) {
-//    console.error('Error deleting from Blob Storage:', error);
-//    return false;
-//  }
-//};
-
-// Helper function to delete file from local storage
+// Helper function to delete file from storage
 const deleteFile = async (url) => {
   try {
-    if (!url || !url.startsWith('/uploads/')) {
+    // Try to delete from Vercel Blob Storage first
+    await del(url);
+    return true;
+  } catch (blobError) {
+    console.warn('Failed to delete from Blob Storage:', blobError);
+    
+    // Fallback to local file deletion
+    try {
+      if (!url.startsWith('/uploads/')) return false;
+      
+      const filename = path.basename(url);
+      const uploadDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
+      const filePath = path.join(uploadDir, filename);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return true;
+      }
+      return false;
+    } catch (localError) {
+      console.error('Error deleting local file:', localError);
       return false;
     }
-    
-    const fs = require('fs');
-    const path = require('path');
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const filename = url.split('/').pop();
-    const filePath = path.join(__dirname, '..', uploadDir, filename);
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error deleting from local storage:', error);
-    return false;
   }
 };
 

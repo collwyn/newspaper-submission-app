@@ -1,13 +1,15 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { put, del } = require('@vercel/blob');
 
 // Ensure upload directory exists
 const ensureUploadDirectoryExists = () => {
-  const uploadDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
+  const uploadDir = path.join(os.tmpdir(), 'uploads');
   try {
     fs.mkdirSync(uploadDir, { recursive: true });
+    console.log('Upload directory created:', uploadDir);
   } catch (err) {
     if (err.code !== 'EEXIST') {
       console.error('Error creating upload directory:', err);
@@ -42,7 +44,7 @@ const upload = multer({
 const uploadToBlob = async (file) => {
   try {
     // Ensure upload directory exists for local fallback
-    ensureUploadDirectoryExists();
+    const localUploadDir = ensureUploadDirectoryExists();
 
     // Create a unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -85,7 +87,7 @@ const deleteFile = async (url) => {
       if (!url.startsWith('/uploads/')) return false;
       
       const filename = path.basename(url);
-      const uploadDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
+      const uploadDir = path.join(os.tmpdir(), 'uploads');
       const filePath = path.join(uploadDir, filename);
       
       if (fs.existsSync(filePath)) {

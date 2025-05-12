@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const path = require('path');
 const connectDB = require('./config/database');
 const fs = require('fs');
+const os = require('os');
 
 // Load environment variables
 require('dotenv').config();
@@ -27,21 +28,28 @@ app.use(morgan('dev')); // logging
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static folder for uploads
-const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-const uploadPath = path.join(__dirname, uploadDir);
+// Determine upload directory
+const uploadDir = path.join(os.tmpdir(), 'uploads');
 
 // Ensure uploads directory exists
 try {
-  fs.mkdirSync(uploadPath, { recursive: true });
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log('Upload directory created:', uploadDir);
 } catch (err) {
-  if (err.code !== 'EEXIST') {
-    console.error('Error creating uploads directory:', err);
-  }
+  console.error('Error creating uploads directory:', err);
 }
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static(uploadPath));
+app.use('/uploads', express.static(uploadDir));
+
+// Root route for health check
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Newspaper Submission Backend is running',
+    environment: process.env.NODE_ENV
+  });
+});
 
 // Mount routes
 app.use('/api/auth', authRoutes);

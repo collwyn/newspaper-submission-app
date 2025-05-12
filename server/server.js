@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const connectDB = require('./config/database');
+const fs = require('fs');
 
 // Load environment variables
 require('dotenv').config();
@@ -18,7 +19,6 @@ const app = express();
 connectDB();
 
 // Middleware
-// Middleware
 app.use(cors({
   origin: ['https://newspaper-submission-app.vercel.app', 'http://localhost:3000'],
   credentials: true
@@ -29,13 +29,19 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static folder for uploads
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-app.use('/uploads', express.static(path.join(__dirname, uploadDir)));
+const uploadPath = path.join(__dirname, uploadDir);
 
-// Create uploads directory if it doesn't exist
-const fs = require('fs');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure uploads directory exists
+try {
+  fs.mkdirSync(uploadPath, { recursive: true });
+} catch (err) {
+  if (err.code !== 'EEXIST') {
+    console.error('Error creating uploads directory:', err);
+  }
 }
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(uploadPath));
 
 // Mount routes
 app.use('/api/auth', authRoutes);

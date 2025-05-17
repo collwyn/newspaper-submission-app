@@ -17,8 +17,8 @@
   
 "scripts": {
   "start": "react-scripts start",
-  "build": "CI=false react-scripts build",
-  "postbuild": "ls -la && echo 'Build directory contents:' && ls -la build",
+  "build": "CI=false react-scripts build && cp -r build/* public/",
+  "postbuild": "ls -la && echo 'Build directory contents:' && ls -la build && echo 'Public directory contents:' && ls -la public",
   "test": "react-scripts test",
   "eject": "react-scripts eject"
 },

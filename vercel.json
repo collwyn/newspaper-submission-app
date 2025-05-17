@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://newspaper-submission-app.vercel.app/api/:path*"
+      "destination": "https://newspaper-submission-app-backend.vercel.app/api/:path*"
     }
   ]
 }

@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 // In src/services/api.js
-const testApiConnection = async () => {
+export const testApiConnection = async () => {
   try {
     const response = await api.get('/health');
     console.log('API Connection Test:', response.data);
